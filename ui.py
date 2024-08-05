@@ -1,5 +1,6 @@
 import streamlit as st
 import json
+import pandas as pd
 import numpy as np
 from sklearn.metrics.pairwise import cosine_similarity
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -93,8 +94,10 @@ def process_blogs(blog_urls):
         future_to_url = {executor.submit(process_blog_pair, blog_url, target_url): (blog_url, target_url)
                          for blog_url in blog_urls for target_url in blog_urls if blog_url != target_url}
         for future in as_completed(future_to_url):
-            links_data.extend(future.result())
-    return json.dumps(links_data, indent=4)
+            result = future.result()
+            if result:
+                links_data.extend(result)
+    return links_data
 
 st.title("Blog Interlinking Tool")
 
@@ -106,6 +109,10 @@ if st.button("Process Blogs"):
         st.error("Please enter at least two blog URLs.")
     else:
         with st.spinner("Processing..."):
-            result = process_blogs(blog_urls)
-            st.success("Processing completed!")
-            st.json(result)
+            links_data = process_blogs(blog_urls)
+            if links_data:
+                st.success("Processing completed!")
+                st.write("## Links Data")
+                st.table(pd.DataFrame(links_data))
+            else:
+                st.error("No links data found.")
